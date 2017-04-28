@@ -1,0 +1,186 @@
+\documentclass[journal]{IEEEtran}
+\usepackage{blindtext}
+\usepackage{graphicx}
+
+\usepackage [english]{babel}
+\usepackage [autostyle, english = american]{csquotes}
+\MakeOuterQuote{"}
+
+\newcommand{\code}[1]{\texttt{#1}}
+
+% correct bad hyphenation here
+\hyphenation{op-tical net-works semi-conduc-tor}
+
+
+\begin{document}
+%
+% paper title
+% can use linebreaks \\ within to get better formatting as desired
+\title{Libert\'{e}, \'{E}galit\'{e}, Fraternit\'{e} \\ Stance Detection in French Language Tweets}
+%
+%
+% author names and IEEE memberships
+% note positions of commas and nonbreaking spaces ( ~ ) LaTeX will not break
+% a structure at a ~ so this keeps an author's name from being broken across
+% two lines.
+% use \thanks{} to gain access to the first footnote area
+% a separate \thanks must be used for each paragraph as LaTeX2e's \thanks
+% was not built to handle multiple paragraphs
+%
+
+\author{Michael Baltz: 6231300032, \code{mbaltz@usc.edu}
+	Rachita Pradeep: 4891102449, \code{rachitap@usc.edu} \\
+	Stephen Magro: 4937098659, \code{smagro@usc.edu} 
+Ted Monyak: 2537595042, \code{monyak@usc.edu}}
+% <-this % stops a space
+
+% The paper headers
+\markboth{USC CSCI 544}
+% The only time the second header will appear is for the odd numbered pages
+% after the title page when using the twoside option.
+% 
+% *** Note that you probably will NOT want to include the author's ***
+% *** name in the headers of peer review papers.                   ***
+% You can use \ifCLASSOPTIONpeerreview for conditional compilation here if
+% you desire.
+
+
+% If you want to put a publisher's ID mark on the page you can do it like
+% this:
+%\IEEEpubid{0000--0000/00\$00.00~\copyright~2007 IEEE}
+% Remember, if you use this you must call \IEEEpubidadjcol in the second
+% column for its text to clear the IEEEpubid mark.
+
+
+
+% use for special paper notices
+%\IEEEspecialpapernotice{(Invited Paper)}
+
+
+
+
+% make the title area
+\maketitle
+
+
+
+% For peer review papers, you can put extra information on the cover
+% page as needed:
+% \ifCLASSOPTIONpeerreview
+% \begin{center} \bfseries EDICS Category: 3-BBND \end{center}
+% \fi
+%
+% For peerreview papers, this IEEEtran command inserts a page break and
+% creates the second title. It will be ignored for other modes.
+\IEEEpeerreviewmaketitle
+
+
+
+\section{Introduction}
+One of the most talked-about stories from the 2016 U.S. Presidential Campaign was the emergence of “fake news” across the internet. Fake news postings are fictitious stories created to be virally shared and obscure the truth about a particular topic. It is widely believed that the prominence of fake news may have played a significant role in the election. The current French Presidential campaign, which will conclude in May 2017, resembles the U.S. campaign in several ways, most notably with the rise of a populist right-wing candidate in Marine Le Pen, and the prevalence of news sharing on the internet. 
+
+Most efforts to combat fake news have been focused on English, including the system recently built using the Emergent data-set \cite{ferreira_vlachos_2016}. However, there have been few systems tailored for French, and due to the timing of their election, this is where we chose to focus. Due to the complexity of the fake news detection task, we investigated a sub-task: stance detection. Stance detection is the determination of an author’s opinion on a topic, and is a helpful first step for general fake news detectors. Our goal was to classify the opinion expressed by a body of text relative to a topic as being in favor of, against, neutral, or unrelated.
+
+In late 2016, the Fake News Challenge was announced \cite{fake_news_challenge}, to foster the development of tools that can assist in fake news detection. The first phase of this competition is aimed at the stance detection of the relationship between an article headline and an article body. However, due to the absence of a reliable data-set for fake news articles in French, we focused on determining the stance of standalone tweets on a given topic. Twitter contains primarily opinionated bodies of text, and a high volume of sharing, so it makes an ideal target for our system. 
+
+In this paper, we propose two methods for stance detection: a logistic classifier trained on a word2vec model, and a recurrent neural network that uses transfer learning, as inspired by an entry \cite{DBLP:journals/corr/ZarrellaM16} to the SemEval-2016 competition on stance detection, which demonstrated a successful recurrent neural network for English stance detection even with a small amount of training data.
+
+\pagebreak
+
+\section{Materials}
+A large volume of French language tweets were collected from Twitter using the Twitter Streaming API. 250 MB of tweet text was collected, which consisted of around 1.8 million tweets - many regarding the 2017 French presidential elections. The properties to create a good labeled stance data-set, is to use a target that is commonly understood by a wide range of people and get significant amount of data for all four classes - agree, disagree, neither and unrelated. The collected data was annotated for the topics "Je soutiens Marine Le Pen" ("I support Marine Le Pen"), "Je soutiens Fran\c{c}ois Fillon" ("I support Fran\c{c}ois Filon") and "Je soutiens Emmanuel Macron" ("I support Emmanuel Macron"). It is important to note that the target need not be explicitly mentioned in the Tweets. The tweets that depicted favorable stance were labeled as “agree”, those that depicted unfavorable stances were labeled “disagree” and the tweets lacked evidence for favor or against were labeled "neither". A neither stance of a tweet does not indicate that the tweeter is neutral towards the target, it just means the stance could not be deduced from the tweets. Tweets that were unrelated to the target were labeled as "unrelated". Retweets and tweets which consisted of only a link to an external page were excluded from the data-set. The final labeled data consisted of 254 agree, 260 disagree, 142 neither, and 65 unrelated tweets.
+
+\pagebreak
+
+\section{Procedures}
+We present two stance detection implementations (and a baseline) - a word2vec Logistic Regression implementation and Recurrent Neural Network implementation. As a general tokenization of tweets used in this experiment we used the nltk tweet tokenizer to segment our data. 
+
+\subsection{Baseline Classifier} 
+To establish performance of our various methods we developed a baseline classifier. The classifier is similar to a four class Naive Bayes classifier in which the word probability priors are calculated from the training set. For the test data, candidate probabilities are calculated for all four classes using the precomputed priors given the probability of each label for the candidate. However, our classifier was modified to not use additional class probabilities as we were focused on finding words differences between the classes. The label with the maximum probability for a given candidate is taken as the predicted value for a tweet. Laplace smoothing was implemented for previously unseen values. 
+
+\subsection{word2vec Logistic Regression}
+The \code{word2vec} \cite{DBLP:journals/corr/abs-1301-3781} approach was informed by \cite{MOHAMMAD16.232,DBLP:conf/starsem/SobhaniMK16}.
+The \code{word2vec} logistic regression model was implemented using the gensim \cite{rehurek_lrec} library, a Python library for analyzing plain-text documents for semantic structure. The model uses 4 main parameters for training: \code{size}, \code{window}, \code{min\_count} and $\alpha$. The dimensionality of the feature vectors is set to 700. \code{window} is the maximum distance between the current and the predicted word in a sentence which is set to 4. The \code{min\_count} is minimum frequency below which the word is ignored - is set to 2 which helped to remove URLs from appearing in our model. The initial learning rate, $\alpha$, is set to 0.025. The \code{word2vec} model is trained using the 250MB of French tweets and the final model consisted of around 60000 word vectors.
+
+This model was then used to compute the cosine similarity between a tweet and a topic. A multiclass logistic regression model was trained, using the \code{scikitlearn} \cite{scikit-learn} Python library, on the the cosine similarities from the training set. This model was used to predict class labels for test data. This method was drawn for the analysis of new articles in which cosine similarity is computed between news headline and news articles, however, in our experiment we used a tweet and a topic statement and computed the cosine similarities between their respective cosine similarities. In the the event of a token not appearing in our vector model, this data point is treated as an error by the classification and is ignored by the cosine similarity, however, used this is often only the problem for tokens with occur once in the entire dataset. All tweets have tokens that appear in the vector model. 
+
+\subsection{Recurrent Neural Network}
+Our final approach is a Recurrent Neural Network built using the \code{Keras} \cite{chollet2015} Python library on top of TensorFlow \cite{tensorflow2015-whitepaper}. The RNN is built using two LSTMs (one for the topic input and one for the tweet text input). The input to the topic LSTM is a string describing the topic, such as "Je soutiens Marine Le Pen" ("I support Marine Le Pen"). This allows the model to extract some meaning from the topic so that the resulting model can classify tweets for multiple topics. Before each LSTM is an embedding layer where each word in the topic/tweet is converted to a 100-dimension word vector using a fastText \cite{bojanowski2016enriching} model trained on a large corpus of French language tweets that we collected. The outputs topic and tweet LSTMs are concatenated and connected directly to a densely connected layer of 4 neurons. This final layer represents a one-hot encoded class that classifies the tweet's stance. This structure was arrived at experimentally and proved to be the best performing architecture that we attempted. Other attempts included using convolutional layers in addition or instead of the LSTM layers, which provided some improvement over smaller LSTMs but ultimately increasing the size of the LSTM to 100 unites provided the best results. The neural net was trained using a dropout rate of 0.2 on all layers to prevent the model overfitting our training data.
+
+The RNN is trained separately for each of our three topics, giving three sets of weights. The architecture of the neural net is centered on an LSTM that learns information about the text of a tweet. The LSTM has 100 LSTM units - which experimentally struck a good balance between training time and accuracy. Before the LSTM is an embedding layer where each word in the topic/tweet is converted to a 100-dimension word vector using a fastText \cite{bojanowski2016enriching} model trained on a large corpus of French language tweets that we collected. The LSTM output is connected to a 1-dimensional convolutional layer, which extracts more spacial data about the tweet. The convolutional layer has an output dimensionality of 64, which is then densely connected to a layer of 4 neurons. This final layer represents a one-hot encoded class that classifies the tweet's stance. This structure was arrived at experimentally and proved to be the best performing architecture that we attempted. Other attempts included using another LSTM to input the topic so that meaning could be extracted from the topic and possibly allow running the model on arbitrary topics, however with our small data size performance was better when training a separate model for each topic.
+
+
+\pagebreak
+
+
+\section{Evaluation}
+
+\subsection{Classification Evaluation}
+For our results we used a k-fold cross validation scheme with k value of four, reporting the accuracy, precision, recall, and f1 for each fold as well as the average and standard deviation across all folds. These methods are common to evaluate the efficacy of supervised classification algorithms and in referenced sources similar metrics were also used. 
+
+\subsection{Labelling Evaluation}
+Our data-set was pulled tweets from the Twitter API \cite{Twitter_API} using Tweepy \cite{tweepy}, and the data was labeled manually by group members. Using this API we were able to collect tweets target specific topics in the French language that were tweeted from the geographical bounding box around France. For manual evaluation tweets were run through Google Translate and team members used this English translation and the context of the tweet to provided an label for each data point. Each tweet was reviewed by three team members and only tweets that had a majority consensus were included in the final data-set. Retweets and duplicate posts were excluded from the labeled data-set to ensure that data points were unique. We considered using hashtags as a noisy labeling method, but ultimately these results were excluded from this assessment for accuracy reasons as hashtags are often used ironically (or simply as a way to categorize a tweet to a topic, not to take a stance) and thus are not a good indicator of stance. 
+
+
+
+
+
+
+
+\section{Results}
+
+\begin{center}
+\begin{tabular}{ | c | c | c | c | c |}
+\hline
+Metrics & Baseline & Logit Regression & RNN\\[0.7ex]
+\hline
+Accuracy & 48.96\% (+/- 2.34\%) & 42.45\% (+/- 3.87\%) & some value\\
+Precision & 48.96\% (+/- 2.34\%)  & 42.45\% (+/- 3.87\%) & some value\\
+Recall & 48.96\% (+/- 2.34\%)  & 42.45\% (+/- 3.87\%) & some value\\
+F1 Value & 0.49 (+/- 0.02) & 0.42 (+/- 0.04) & some value\\ [1ex]
+\hline
+\end{tabular}
+\end{center}
+
+Classification of "Macron est le pire pr\'{e}sident pour la France" ("Macron is the worst president for France") \\ on the topic "Je soutiens Emmanuel Macron" ("I support Emmanuel Macron")
+\begin{center}
+\begin{tabular}{ | c | c | c | c | c |}
+\hline
+Method & Agree & Disagree & Neither & Unrelated \\[0.7ex]
+\hline
+Baseline & 3.2e-20 & \textbf{1.4e-20} & 2.1e-19 & 3.7e-20\\
+word2vec & xxxx & \textbf{xxxx} & xxxx & xxxx \\
+RNN & 0.19 & \textbf{0.32} & 0.30 & 0.18 \\
+\hline
+\end{tabular}
+\end{center}
+
+
+Of the methods presented in this paper the results from the recurrent neural network had the best accuracy for tweet stance detection. This result is consistent with trends from SemEval 2016 \cite{DBLP:journals/corr/ZarrellaM16} in which many submissions for a similar stance detection task on English tweets used neural networks. The logistic regression technique drew inspiration from work done with the Emergent Info data-set \cite{ferreira_vlachos_2016}, however, this paper applied this algorithm to stance detection in new articles achieving an accuracy of 73\%. We attribute the discrepancy in our results for this method to the shorter lengths of our data as tweets are limited to 140 characters. This means for a tweet there were fewer word vectors with which to compute the cosine similarity than the average news article in the Emergent Info data-set \cite{ferreira_vlachos_2016}. The baseline classifier slightly outperformed the word2vec classification method, however, it is worth noting this performance is not statistically significant. 
+
+\section{Discussion}
+
+Inspired by similar research and systems using English data \cite{DBLP:journals/corr/ZarrellaM16}, we have shown that a recurrent neural network using transfer learning is the most effective method out of the three that we proposed at stance detection on French tweets. Therefore, we have shown that this methodology translates well between languages, an important finding in the international efforts to combat fake news independent of language. 
+
+The word2vec model was largely unsuccessful, we believe, due to the brevity of individual tweets. We hypothesize that the use of the Emergent data-set \cite{ferreira_vlachos_2016} was more effective due to the longer word vectors in entire article bodies. Furthermore, we have shown that our baseline model, which employs a Naive Bayes implementation to classify stance, has similar performance to the word2vec model. We hypothesize that this has to do with the brevity of tweets as well.
+
+Due to the manual nature of our annotation methodology, we were limited in the amount of data we could train our models on. With more time and resources, we hope to automate our system for annotating tweets to build a larger corpus. Furthermore, in future research, we intend to adapt our system so it may be used on headline and article body pairs, which was the original problem described in phase one of the Fake News Challenge. This adaptation would make our system most useful for fake news detection, which could enable it to help combat the fake news problem in future French elections. This adds another layer of complexity to the research, in compiling a sizeable French data-set such as the Emergent data-set \cite{ferreira_vlachos_2016}. 
+
+
+
+
+\ifCLASSOPTIONcaptionsoff
+  \newpage
+\fi
+
+
+\bibliographystyle{unsrt}%Used BibTeX style is unsrt
+
+
+\bibliography{references}
+
+\section{Division of Labor}
+
+\end{document}
+
+
